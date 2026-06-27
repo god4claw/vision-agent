@@ -1,0 +1,6 @@
+# Stage 2 perception dependencies.
+# rapidocr = unified RapidOCR package (PP-OCR models on ONNX Runtime by default).
+# The new package supports Python up to 3.13, unlike the older
+# rapidocr-onnxruntime / native paddlepaddle which cap below 3.13.
+rapidocr>=2.0.0
+onnxruntime>=1.17.0

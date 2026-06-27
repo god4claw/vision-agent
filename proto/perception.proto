@@ -1,0 +1,37 @@
+syntax = "proto3";
+
+package perception;
+
+option go_package = "visionagent/internal/perceptionpb";
+
+// Perception is the OCR sidecar service: turn a frame into structured text+boxes.
+service Perception {
+  rpc Health(HealthRequest) returns (HealthReply);
+  rpc Ocr(OcrRequest) returns (OcrReply);
+}
+
+message HealthRequest {}
+
+message HealthReply {
+  string status = 1; // "ok"
+  string ocr = 2;    // "rapidocr" | "stub"
+  string err = 3;    // init error, if any
+}
+
+message OcrRequest {
+  bytes image = 1; // PNG-encoded frame
+}
+
+message Box {
+  int32 x = 1;
+  int32 y = 2;
+  int32 w = 3;
+  int32 h = 4;
+  string text = 5;
+  double conf = 6;
+}
+
+message OcrReply {
+  string text = 1;
+  repeated Box boxes = 2;
+}

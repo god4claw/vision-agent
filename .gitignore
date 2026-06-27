@@ -1,0 +1,14 @@
+# Vendored native OCR assets (large binaries; reproduce via scripts/extract_dict.py
+# and by copying from the rapidocr/onnxruntime Python packages).
+/assets/
+
+# Flywheel data collected at runtime.
+/data/
+
+# Build output / temp.
+/bin/
+*.exe
+
+# Editor noise.
+.vscode/
+.idea/
