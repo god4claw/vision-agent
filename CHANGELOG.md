@@ -5,6 +5,19 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- Real-Ollama integration test for the LLM action reasoner
+  (`internal/reason/ollama_integration_test.go`): it drives the actual
+  `OllamaReasoner` against a locally running Ollama with a small realistic
+  perception result and asserts the returned `Decision` is structurally valid
+  (parseable, action verb in the allowed set, chosen element index in range so
+  the model never invents coordinates). The test probes the Ollama endpoint
+  first and skips cleanly when the server is unreachable or the model is not
+  pulled, so CI stays green without Ollama. The model is configurable via the
+  `VA_OLLAMA_URL` and `VA_OLLAMA_MODEL` environment variables.
+
 ## [0.2.0] - 2026-06-28
 
 ### Added
