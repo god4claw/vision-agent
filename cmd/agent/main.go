@@ -2,10 +2,12 @@ package main
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"fmt"
 	"image"
 	"log/slog"
+	"net/http"
 	"os"
 	"os/signal"
 	"sort"
@@ -68,6 +70,7 @@ func main() {
 		attnThresh    = flag.Float64("attn-thresh", 2.0, "attention per-tile change threshold (0..255)")
 		memoryDir     = flag.String("memory-dir", "", "persist episodic memory under this dir (empty = in-memory, cleared on exit)")
 		telemetryOut  = flag.String("telemetry-out", "", "on shutdown, write the final telemetry snapshot to this file (.csv or .json; empty = off)")
+		metricsAddr   = flag.String("metrics-addr", "", "if set, serve Prometheus telemetry metrics at /metrics on this address (e.g. 127.0.0.1:9090; empty = off)")
 	)
 	flag.Parse()
 
@@ -209,6 +212,26 @@ func main() {
 			log.Info("telemetry exported", "path", *telemetryOut)
 		}()
 	}
+	if *metricsAddr != "" {
+		mux := http.NewServeMux()
+		mux.HandleFunc("/metrics", func(w http.ResponseWriter, _ *http.Request) {
+			w.Header().Set("Content-Type", "text/plain; version=0.0.4; charset=utf-8")
+			_, _ = fmt.Fprint(w, telemetry.Snapshot().Prometheus())
+		})
+		srv := &http.Server{Addr: *metricsAddr, Handler: mux, ReadHeaderTimeout: 5 * time.Second}
+		go func() {
+			if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+				log.Error("metrics server failed", "err", err)
+			}
+		}()
+		log.Info("metrics endpoint enabled", "addr", *metricsAddr, "path", "/metrics")
+		defer func() {
+			shutCtx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+			defer cancel()
+			_ = srv.Shutdown(shutCtx)
+		}()
+	}
+
 	a := &agent.Agent{
 		Capturer:        capturer,
 		Perceiver:       perceiver,

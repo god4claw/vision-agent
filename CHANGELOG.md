@@ -5,6 +5,22 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.0] - 2026-06-28
+
+### Added
+- End-to-end integration test for the agent loop that wires real, non-network
+  components together (synthetic capturer, an `httptest` server standing in for
+  the perception `/ocr` endpoint driving the real `HTTPPerceiver` transport, the
+  offline embedder, bounded episodic memory, the dry-run executor and the
+  built-in heuristic reasoner) and asserts a clean, self-consistent run.
+- Prometheus telemetry export: `Snapshot.Prometheus()` renders the telemetry
+  snapshot in the Prometheus text exposition format (counters for
+  scored/progress/regress/stall, gauges for the rates, efficiency and net), plus
+  a `-metrics-addr` flag that serves it at `/metrics` over HTTP and is shut down
+  on the graceful-shutdown path.
+
+[0.2.0]: https://github.com/gaz/vision-agent/releases/tag/v0.2.0
+
 ## [0.1.0] - 2026-06-28
 
 ### Added

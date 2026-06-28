@@ -97,6 +97,35 @@ func (s Snapshot) CSV() []byte {
 	return []byte(b.String())
 }
 
+// Prometheus renders the snapshot in the Prometheus text exposition format
+// (version 0.0.4): counters for the raw action tallies and gauges for the
+// derived rates, efficiency and net forward motion. Every metric carries the
+// required "# HELP" and "# TYPE" lines and is namespaced under "visionagent_".
+// The output is suitable for serving directly at a /metrics endpoint.
+func (s Snapshot) Prometheus() string {
+	var b strings.Builder
+	counter := func(name, help string, v int) {
+		fmt.Fprintf(&b, "# HELP %s %s\n", name, help)
+		fmt.Fprintf(&b, "# TYPE %s counter\n", name)
+		fmt.Fprintf(&b, "%s %d\n", name, v)
+	}
+	gauge := func(name, help string, v float64) {
+		fmt.Fprintf(&b, "# HELP %s %s\n", name, help)
+		fmt.Fprintf(&b, "# TYPE %s gauge\n", name)
+		fmt.Fprintf(&b, "%s %s\n", name, strconv.FormatFloat(v, 'g', -1, 64))
+	}
+	counter("visionagent_scored_total", "Total scored (non-no-op) actions.", s.Scored)
+	counter("visionagent_progress_total", "Scored actions that moved closer to the goal.", s.Progress)
+	counter("visionagent_regress_total", "Scored actions that changed the screen without progress.", s.Regress)
+	counter("visionagent_stall_total", "Scored actions that had no visible effect.", s.Stall)
+	gauge("visionagent_progress_rate", "Share of scored actions that made progress (Progress/Scored).", s.ProgressRate)
+	gauge("visionagent_regress_rate", "Share of scored actions that regressed (Regress/Scored).", s.RegressRate)
+	gauge("visionagent_stall_rate", "Share of scored actions that stalled (Stall/Scored).", s.StallRate)
+	gauge("visionagent_efficiency", "Progress over effective actions (Progress/(Progress+Regress)).", s.Efficiency)
+	gauge("visionagent_net", "Net forward motion (Progress - Regress).", float64(s.Net))
+	return b.String()
+}
+
 // Marshal renders the snapshot in the format implied by the file extension of
 // path (".csv" -> CSV, ".json" -> JSON). Unknown extensions error.
 func (s Snapshot) Marshal(path string) ([]byte, error) {
