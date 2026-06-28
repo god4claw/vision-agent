@@ -98,6 +98,10 @@ go run ./cmd/agent
 -roi "x,y,w,h"     OCR only this screen region (default: full display)
 -diff F            frame-diff threshold; skip OCR when frame change <= F (0 = always OCR; default 1.5)
 -live              ENABLE REAL ACTIONS (off by default)
+-memory-dir DIR    persist episodic memory across runs (empty = in-memory, cleared on exit)
+-telemetry-out F   write the final telemetry snapshot to F on exit (.csv or .json)
+-metrics-addr ADDR serve Prometheus /metrics at ADDR (e.g. 127.0.0.1:9090; empty = off)
+-version           print version and exit
 ```
 
 ## Run over gRPC
@@ -420,15 +424,18 @@ ollama pull nomic-embed-text
 go run ./cmd/agent -iters 200 -embed-model nomic-embed-text
 ```
 
-## Definition of Done (Stage 1)
+## Definition of Done (Stage 1 — met)
 
-- [ ] `go build ./...` clean
-- [ ] sidecar `/health` responds
-- [ ] agent captures screen and calls perception
-- [ ] perception returns text + boxes
-- [ ] episode written to memory; recall@1 works
-- [ ] >=100 iterations, no crash, bounded memory (`go test`)
-- [ ] actions dry-run only
+- [x] `go build ./...` clean
+- [x] sidecar `/health` responds
+- [x] agent captures screen and calls perception
+- [x] perception returns text + boxes
+- [x] episode written to memory; recall@1 works
+- [x] >=100 iterations, no crash, bounded memory (`go test`)
+- [x] actions dry-run only
+
+Stage 1 is complete; Stage 2 (gRPC), Stage 3 (flywheel) and Stage 4 (native ONNX)
+are also implemented. See `CHANGELOG.md` for the released increments.
 - [ ] watchdog continues on component failure
 - [ ] this README
 

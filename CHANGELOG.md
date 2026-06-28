@@ -19,7 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   a `-metrics-addr` flag that serves it at `/metrics` over HTTP and is shut down
   on the graceful-shutdown path.
 
-[0.2.0]: https://github.com/gaz/vision-agent/releases/tag/v0.2.0
+[0.2.0]: https://github.com/god4claw/vision-agent/releases/tag/v0.2.0
 
 ## [0.1.0] - 2026-06-28
 
@@ -42,4 +42,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (linux/amd64, windows/amd64, darwin/amd64, darwin/arm64) and publishes them
   to a GitHub Release on pushed `v*` tags.
 
-[0.1.0]: https://github.com/gaz/vision-agent/releases/tag/v0.1.0
+[0.1.0]: https://github.com/god4claw/vision-agent/releases/tag/v0.1.0
