@@ -1,6 +1,12 @@
 package agent
 
-import "sync"
+import (
+	"encoding/json"
+	"fmt"
+	"strconv"
+	"strings"
+	"sync"
+)
 
 // Telemetry accumulates progress/regress/stall counts over a run so the
 // operator can track how effectively the agent is advancing toward its goal.
@@ -39,20 +45,69 @@ func (t *Telemetry) Record(progress, screenChanged bool) {
 
 // Snapshot is an immutable view of the accumulated telemetry with derived rates.
 type Snapshot struct {
-	Scored       int
-	Progress     int
-	Regress      int
-	Stall        int
-	ProgressRate float64 // Progress / Scored
-	RegressRate  float64 // Regress / Scored
-	StallRate    float64 // Stall / Scored
-	Net          int     // Progress - Regress (net forward motion)
+	Scored       int     `json:"scored"`
+	Progress     int     `json:"progress"`
+	Regress      int     `json:"regress"`
+	Stall        int     `json:"stall"`
+	ProgressRate float64 `json:"progress_rate"` // Progress / Scored
+	RegressRate  float64 `json:"regress_rate"`  // Regress / Scored
+	StallRate    float64 `json:"stall_rate"`    // Stall / Scored
+	Net          int     `json:"net"`           // Progress - Regress (net forward motion)
 
 	// Efficiency is the share of *effective* (screen-changing) actions that
 	// were progress: Progress / (Progress + Regress). It ignores stalls, so it
 	// measures decision quality once the agent actually did something. High is
 	// good (1.0 = every effective action helped); 0 when no effective actions.
-	Efficiency float64
+	Efficiency float64 `json:"efficiency"`
+}
+
+// snapshotColumns is the canonical column order shared by the CSV header and
+// row so they always line up.
+var snapshotColumns = []string{
+	"scored", "progress", "regress", "stall",
+	"progress_rate", "regress_rate", "stall_rate", "efficiency", "net",
+}
+
+// JSON renders the snapshot as indented JSON (with a trailing newline).
+func (s Snapshot) JSON() []byte {
+	b, _ := json.MarshalIndent(s, "", "  ")
+	return append(b, '\n')
+}
+
+// CSV renders the snapshot as a two-line CSV document: a header row followed by
+// a single data row, in snapshotColumns order. Rates use 4 decimal places.
+func (s Snapshot) CSV() []byte {
+	rate := func(f float64) string { return strconv.FormatFloat(f, 'f', 4, 64) }
+	row := []string{
+		strconv.Itoa(s.Scored),
+		strconv.Itoa(s.Progress),
+		strconv.Itoa(s.Regress),
+		strconv.Itoa(s.Stall),
+		rate(s.ProgressRate),
+		rate(s.RegressRate),
+		rate(s.StallRate),
+		rate(s.Efficiency),
+		strconv.Itoa(s.Net),
+	}
+	var b strings.Builder
+	b.WriteString(strings.Join(snapshotColumns, ","))
+	b.WriteByte('\n')
+	b.WriteString(strings.Join(row, ","))
+	b.WriteByte('\n')
+	return []byte(b.String())
+}
+
+// Marshal renders the snapshot in the format implied by the file extension of
+// path (".csv" -> CSV, ".json" -> JSON). Unknown extensions error.
+func (s Snapshot) Marshal(path string) ([]byte, error) {
+	switch {
+	case strings.HasSuffix(strings.ToLower(path), ".csv"):
+		return s.CSV(), nil
+	case strings.HasSuffix(strings.ToLower(path), ".json"):
+		return s.JSON(), nil
+	default:
+		return nil, fmt.Errorf("telemetry: unsupported export extension for %q (want .csv or .json)", path)
+	}
 }
 
 // Snapshot returns the current counts and rates.

@@ -1,0 +1,27 @@
+# Wires the Python perception sidecar together with the Go agent.
+#
+#   docker compose up --build
+#
+# The agent runs in DRY-RUN mode by default (no real input) and talks to the
+# sidecar over HTTP on the internal compose network. Screen capture is a
+# host-display concern and is not wired here; this compose file is primarily
+# for exercising the perception + agent loop in a headless/sidecar setup.
+services:
+  perception:
+    build:
+      context: ./perception
+      dockerfile: Dockerfile
+    environment:
+      # Listen on all interfaces so the agent container can reach the sidecar.
+      PERCEPTION_HOST: "0.0.0.0"
+      PERCEPTION_PORT: "8089"
+    expose:
+      - "8089"
+
+  agent:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    depends_on:
+      - perception
+    command: ["-transport", "http", "-perception", "http://perception:8089", "-iters", "200"]

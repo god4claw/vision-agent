@@ -16,10 +16,13 @@ Endpoints:
 import base64
 import http.server
 import json
+import os
 import socketserver
 
-HOST = "127.0.0.1"
-PORT = 8089
+# Bind address. Defaults match local single-host use; override PERCEPTION_HOST
+# to 0.0.0.0 when running inside a container so other containers can reach it.
+HOST = os.environ.get("PERCEPTION_HOST", "127.0.0.1")
+PORT = int(os.environ.get("PERCEPTION_PORT", "8089"))
 
 # Try to bring up the real OCR engine (PP-OCR models on ONNX Runtime).
 # If anything fails (missing models, offline first-run, import error) we fall

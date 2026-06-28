@@ -62,6 +62,7 @@ func main() {
 		attnTile      = flag.Int("attn-tile", 32, "attention tile size in pixels")
 		attnThresh    = flag.Float64("attn-thresh", 2.0, "attention per-tile change threshold (0..255)")
 		memoryDir     = flag.String("memory-dir", "", "persist episodic memory under this dir (empty = in-memory, cleared on exit)")
+		telemetryOut  = flag.String("telemetry-out", "", "on shutdown, write the final telemetry snapshot to this file (.csv or .json; empty = off)")
 	)
 	flag.Parse()
 
@@ -187,6 +188,20 @@ func main() {
 	}
 
 	telemetry := &agent.Telemetry{}
+	if *telemetryOut != "" {
+		defer func() {
+			data, err := telemetry.Snapshot().Marshal(*telemetryOut)
+			if err != nil {
+				log.Error("telemetry export failed", "err", err)
+				return
+			}
+			if err := os.WriteFile(*telemetryOut, data, 0o644); err != nil {
+				log.Error("telemetry export write failed", "path", *telemetryOut, "err", err)
+				return
+			}
+			log.Info("telemetry exported", "path", *telemetryOut)
+		}()
+	}
 	a := &agent.Agent{
 		Capturer:        capturer,
 		Perceiver:       perceiver,
