@@ -443,3 +443,7 @@ are also implemented. See `CHANGELOG.md` for the released increments.
 
 - **Stage 2**: PaddleOCR -> ONNX, perception native in Go (`onnxruntime_go`); gRPC IPC.
 - **Stage 3**: data flywheel (log low-confidence -> offline LoRA -> hot-swap), drift detection.
+
+## License
+
+Licensed under the Apache License, Version 2.0. See [LICENSE](LICENSE) and [NOTICE](NOTICE).
