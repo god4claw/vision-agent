@@ -64,6 +64,29 @@ python scripts/extract_dict.py
 This reads the rec model from the installed `rapidocr` package and writes
 `assets/ppocr_keys.txt` (one entry per line, in model index order, LF-newline).
 
+## Testing the real OCR path
+
+Two real-OCR tests exercise the actual PP-OCR ONNX models:
+
+- **Python sidecar** (no `assets/` needed; uses the models bundled in the
+  `rapidocr` package): renders text in-memory with Pillow and runs it through
+  the same `server._run_ocr` path the sidecar serves.
+
+  ```powershell
+  cd perception
+  python -m unittest -v test_ocr_real
+  ```
+
+- **Native Go engine** (`internal/ocr/engine_real_test.go`): builds an `Engine`
+  from the `assets/` layout above and runs det + rec on a committed sample image
+  (`internal/ocr/testdata/ocr_sample.png`). It **skips** when `assets/` is not
+  populated (so CI stays green) and runs when they are present:
+
+  ```powershell
+  $env:CGO_ENABLED = "1"
+  go test ./internal/ocr/ -run TestEngineRealOCR -v
+  ```
+
 ## Notes
 
 - The native transport requires a CGo toolchain (`CGO_ENABLED=1`, Mingw-w64

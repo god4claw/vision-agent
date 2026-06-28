@@ -8,6 +8,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Real ONNX-OCR tests covering both perception paths. A Python test
+  (`perception/test_ocr_real.py`) renders text in-memory with Pillow and runs
+  it through the sidecar's real OCR path (`server._run_ocr`, RapidOCR / PP-OCR
+  ONNX models), asserting the recognized text and boxes; it skips cleanly when
+  RapidOCR / Pillow are unavailable. A skip-guarded native Go test
+  (`internal/ocr/engine_real_test.go`) drives the in-process `Engine`
+  (detection + recognition) on a committed sample image and asserts the known
+  text is read; it skips when the gitignored `assets/` models + onnxruntime
+  shared library are absent, so CI stays green. See `docs/ASSETS.md`.
 - Real-Ollama integration test for the LLM action reasoner
   (`internal/reason/ollama_integration_test.go`): it drives the actual
   `OllamaReasoner` against a locally running Ollama with a small realistic
