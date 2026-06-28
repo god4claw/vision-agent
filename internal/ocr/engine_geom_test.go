@@ -2,8 +2,39 @@ package ocr
 
 import (
 	"math"
+	"math/rand"
 	"testing"
 )
+
+// synthPoints builds a deterministic synthetic point cloud for benchmarking the
+// geometry routines (no model or DLL required).
+func synthPoints(n int) []pt {
+	r := rand.New(rand.NewSource(1))
+	pts := make([]pt, n)
+	for i := range pts {
+		pts[i] = pt{X: r.Float64() * 1000, Y: r.Float64() * 1000}
+	}
+	return pts
+}
+
+func BenchmarkConvexHull(b *testing.B) {
+	base := synthPoints(500)
+	buf := make([]pt, len(base))
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		// convexHull sorts in place, so work on a fresh copy each iteration.
+		copy(buf, base)
+		_ = convexHull(buf)
+	}
+}
+
+func BenchmarkMinAreaRect(b *testing.B) {
+	hull := convexHull(synthPoints(500))
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_ = minAreaRect(hull)
+	}
+}
 
 const eps = 1e-9
 

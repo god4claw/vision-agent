@@ -2,11 +2,36 @@ package memory
 
 import (
 	"context"
+	"strconv"
 	"testing"
 
 	"visionagent/internal/embed"
 	"visionagent/internal/executor"
 )
+
+func BenchmarkStoreAddNearest(b *testing.B) {
+	ctx := context.Background()
+	s, err := NewStore(embed.LocalEmbedder{}, 0)
+	if err != nil {
+		b.Fatalf("NewStore: %v", err)
+	}
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		id := strconv.Itoa(i)
+		ep := Episode{
+			ID:        id,
+			Stage:     "s",
+			StateText: "open the file menu and click item " + id,
+			Action:    executor.Action{Type: executor.ActionClick, X: i},
+		}
+		if err := s.Add(ctx, ep); err != nil {
+			b.Fatalf("Add: %v", err)
+		}
+		if _, err := s.Nearest(ctx, "open the file menu", 3); err != nil {
+			b.Fatalf("Nearest: %v", err)
+		}
+	}
+}
 
 func TestStoreAddNearest(t *testing.T) {
 	ctx := context.Background()
@@ -71,6 +96,53 @@ func TestStoreBoundedEviction(t *testing.T) {
 	}
 	if got["e0"] || got["e1"] {
 		t.Fatalf("evicted episodes still present: %v", got)
+	}
+	if !got["e4"] {
+		t.Fatalf("newest episode e4 missing after eviction: %v", got)
+	}
+}
+
+func TestPersistentStoreEvictionAcrossReopen(t *testing.T) {
+	ctx := context.Background()
+	dir := t.TempDir()
+	const max = 3
+
+	// First run: add up to the bound, then reopen and keep adding. Eviction must
+	// continue to prune the oldest episodes (e0, e1) that were persisted before
+	// the reopen, not just those added in the current process.
+	s1, err := NewPersistentStore(embed.LocalEmbedder{}, max, dir)
+	if err != nil {
+		t.Fatalf("NewPersistentStore (1): %v", err)
+	}
+	for _, id := range []string{"e0", "e1", "e2"} {
+		if err := s1.Add(ctx, Episode{ID: id, Stage: "s", StateText: "state text " + id}); err != nil {
+			t.Fatalf("Add %s: %v", id, err)
+		}
+	}
+
+	s2, err := NewPersistentStore(embed.LocalEmbedder{}, max, dir)
+	if err != nil {
+		t.Fatalf("NewPersistentStore (2): %v", err)
+	}
+	for _, id := range []string{"e3", "e4"} {
+		if err := s2.Add(ctx, Episode{ID: id, Stage: "s", StateText: "state text " + id}); err != nil {
+			t.Fatalf("Add %s: %v", id, err)
+		}
+	}
+
+	if got := s2.Len(); got != max {
+		t.Fatalf("Len after reopen = %d, want bounded to %d", got, max)
+	}
+	near, err := s2.Nearest(ctx, "state text e4", max)
+	if err != nil {
+		t.Fatalf("Nearest: %v", err)
+	}
+	got := map[string]bool{}
+	for _, ep := range near {
+		got[ep.ID] = true
+	}
+	if got["e0"] || got["e1"] {
+		t.Fatalf("episodes persisted before reopen were not evicted: %v", got)
 	}
 	if !got["e4"] {
 		t.Fatalf("newest episode e4 missing after eviction: %v", got)

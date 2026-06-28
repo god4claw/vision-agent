@@ -29,6 +29,18 @@ func TestLocalEmbedderDeterminism(t *testing.T) {
 	}
 }
 
+func BenchmarkLocalEmbedderEmbed(b *testing.B) {
+	ctx := context.Background()
+	var e LocalEmbedder
+	const text = "open the file menu and click new then save the document as report"
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		if _, err := e.Embed(ctx, text); err != nil {
+			b.Fatalf("Embed: %v", err)
+		}
+	}
+}
+
 func TestLocalEmbedderFixedDimAndNorm(t *testing.T) {
 	ctx := context.Background()
 	var e LocalEmbedder

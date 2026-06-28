@@ -3,6 +3,10 @@ package memory
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"io/fs"
+	"os"
+	"path/filepath"
 	"strconv"
 	"sync"
 
@@ -11,6 +15,13 @@ import (
 	"visionagent/internal/embed"
 	"visionagent/internal/executor"
 )
+
+// orderFileName is the sidecar (in the persistence dir) that records episode
+// insertion order so bounded eviction survives restarts. chromem-go stores
+// documents in an unordered map and exposes no enumeration of insertion order,
+// so we persist the order ourselves alongside it. The file lives in the DB root
+// dir, never inside chromem's per-collection (hashed) subdirectories.
+const orderFileName = "order.json"
 
 // Episode is one remembered "what / how / at which stage / under which variables".
 type Episode struct {
@@ -32,6 +43,7 @@ type Store struct {
 	coll        *chromem.Collection
 	maxEpisodes int
 	order       []string // insertion order, for bounded eviction
+	orderPath   string   // sidecar file persisting order; empty for in-memory stores
 }
 
 // NewStore creates an in-memory vector store using the given embedder.
@@ -69,7 +81,53 @@ func newStore(emb embed.Embedder, maxEpisodes int, dir string) (*Store, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Store{coll: coll, maxEpisodes: maxEpisodes}, nil
+	s := &Store{coll: coll, maxEpisodes: maxEpisodes}
+	if dir != "" {
+		// Reload insertion order so eviction prunes episodes persisted by a
+		// previous run. In-memory stores (dir == "") keep order empty as before.
+		s.orderPath = filepath.Join(dir, orderFileName)
+		if err := s.loadOrder(); err != nil {
+			return nil, err
+		}
+	}
+	return s, nil
+}
+
+// loadOrder restores the persisted insertion order from the sidecar file. Only
+// IDs still present in the reloaded collection are kept, so the eviction count
+// stays consistent even if documents were removed out of band.
+func (s *Store) loadOrder() error {
+	data, err := os.ReadFile(s.orderPath)
+	if err != nil {
+		if errors.Is(err, fs.ErrNotExist) {
+			return nil
+		}
+		return err
+	}
+	var ids []string
+	if err := json.Unmarshal(data, &ids); err != nil {
+		return err
+	}
+	s.order = s.order[:0]
+	for _, id := range ids {
+		if _, err := s.coll.GetByID(context.Background(), id); err == nil {
+			s.order = append(s.order, id)
+		}
+	}
+	return nil
+}
+
+// saveOrder writes the current insertion order to the sidecar file. It is a
+// no-op for in-memory stores. Callers must hold s.mu.
+func (s *Store) saveOrder() error {
+	if s.orderPath == "" {
+		return nil
+	}
+	data, err := json.Marshal(s.order)
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(s.orderPath, data, 0o600)
 }
 
 func (s *Store) Add(ctx context.Context, ep Episode) error {
@@ -101,7 +159,7 @@ func (s *Store) Add(ctx context.Context, ep Episode) error {
 			return err
 		}
 	}
-	return nil
+	return s.saveOrder()
 }
 
 // Nearest returns up to k closest past episodes to the given state text.
