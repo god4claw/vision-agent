@@ -35,13 +35,37 @@ type Store struct {
 }
 
 // NewStore creates an in-memory vector store using the given embedder.
-// maxEpisodes <= 0 means unbounded.
+// maxEpisodes <= 0 means unbounded. The episodic memory is not persisted and is
+// cleared when the process exits; use NewPersistentStore to retain it.
 func NewStore(emb embed.Embedder, maxEpisodes int) (*Store, error) {
-	db := chromem.NewDB()
+	return newStore(emb, maxEpisodes, "")
+}
+
+// NewPersistentStore creates a vector store whose episodes survive restarts by
+// persisting them under dir. An empty dir falls back to in-memory. On startup
+// the existing "episodes" collection (if any) is reloaded from disk, so the
+// agent accumulates experience across runs.
+func NewPersistentStore(emb embed.Embedder, maxEpisodes int, dir string) (*Store, error) {
+	return newStore(emb, maxEpisodes, dir)
+}
+
+func newStore(emb embed.Embedder, maxEpisodes int, dir string) (*Store, error) {
 	ef := chromem.EmbeddingFunc(func(ctx context.Context, text string) ([]float32, error) {
 		return emb.Embed(ctx, text)
 	})
-	coll, err := db.CreateCollection("episodes", nil, ef)
+	var db *chromem.DB
+	if dir == "" {
+		db = chromem.NewDB()
+	} else {
+		var err error
+		db, err = chromem.NewPersistentDB(dir, false)
+		if err != nil {
+			return nil, err
+		}
+	}
+	// GetOrCreateCollection works for both a fresh in-memory DB and a reloaded
+	// persistent one (existing episodes are restored from disk).
+	coll, err := db.GetOrCreateCollection("episodes", nil, ef)
 	if err != nil {
 		return nil, err
 	}

@@ -23,16 +23,16 @@ type AttentionPerceiver struct {
 	tile   int
 	thresh float64
 
-	mu       sync.Mutex
-	lastSig  []float64
-	gw, gh   int
-	lastW    int
-	lastH    int
-	lastRes  Result
-	hasLast  bool
-	full     int
-	partial  int
-	skipped  int
+	mu      sync.Mutex
+	lastSig []float64
+	gw, gh  int
+	lastW   int
+	lastH   int
+	lastRes Result
+	hasLast bool
+	full    int
+	partial int
+	skipped int
 }
 
 func NewAttentionPerceiver(inner Perceiver, tile int, thresh float64) *AttentionPerceiver {

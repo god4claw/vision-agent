@@ -61,6 +61,7 @@ func main() {
 		attnFlag      = flag.Bool("attn", false, "diff-ROI attention: OCR only changed screen regions (overrides -diff)")
 		attnTile      = flag.Int("attn-tile", 32, "attention tile size in pixels")
 		attnThresh    = flag.Float64("attn-thresh", 2.0, "attention per-tile change threshold (0..255)")
+		memoryDir     = flag.String("memory-dir", "", "persist episodic memory under this dir (empty = in-memory, cleared on exit)")
 	)
 	flag.Parse()
 
@@ -75,6 +76,10 @@ func main() {
 	}
 
 	store, err := memory.NewStore(emb, *maxEpisodes)
+	if *memoryDir != "" {
+		store, err = memory.NewPersistentStore(emb, *maxEpisodes, *memoryDir)
+		log.Info("episodic memory: persistent", "dir", *memoryDir)
+	}
 	if err != nil {
 		log.Error("memory init failed", "err", err)
 		os.Exit(1)

@@ -1,6 +1,8 @@
-# vision-agent (Stage 1)
+# vision-agent (MVP / early beta)
 
-Autonomous vision agent — Stage 1 prototype. Closes the loop:
+Autonomous vision agent — MVP / early beta. The Stage 2–4 features (gRPC
+transport, native ONNX OCR, the data flywheel, and LLM reasoning/planning) are
+already implemented; see the sections below. Closes the loop:
 
 ```
 screen -> perception -> episodic memory -> decision -> action (dry-run) -> screen
@@ -45,7 +47,7 @@ CSV/JSON for time-series graphs; try a larger reasoner model to improve targetin
 | Perception (OCR) | Python sidecar (RapidOCR) **or** native ONNX in Go (`internal/ocr`, PP-OCRv6 via `onnxruntime_go`) |
 | Memory | `chromem-go` (embedded vector store) |
 | Embeddings | Local offline embedder by default; Ollama optional |
-| Actions | Dry-run executor (real executor disabled in Stage 1) |
+| Actions | Dry-run executor by default; real input + guardrails via `-live` |
 | IPC | HTTP/JSON, gRPC, or in-process native (`-transport`) |
 
 ## Prerequisites
