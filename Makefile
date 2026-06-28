@@ -11,11 +11,15 @@ GO ?= go
 AGENT_IMAGE ?= vision-agent
 PERCEPTION_IMAGE ?= vision-agent-perception
 
+# Version string injected into the agent binary via -ldflags. Falls back to
+# "dev" when git is unavailable or the tree is not a repository.
+VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
+
 .PHONY: build test vet fmt lint bench docker docker-agent docker-perception clean
 
-# Build all binaries.
+# Build all binaries (stamps main.version into the agent).
 build:
-	$(GO) build ./...
+	$(GO) build -ldflags "-X main.version=$(VERSION)" ./...
 
 # Run the full test suite (CGO enabled, like CI).
 test:

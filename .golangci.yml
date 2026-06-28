@@ -1,0 +1,16 @@
+# Conservative lint config (golangci-lint v2): only checks the current tree
+# already passes. Intentionally excludes errcheck (the code has deliberate
+# `_ =` ignores) and any opinionated linter that would force churn.
+version: "2"
+
+linters:
+  default: none
+  enable:
+    - govet
+    - ineffassign
+    - misspell
+    - unused
+
+formatters:
+  enable:
+    - gofmt

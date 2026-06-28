@@ -10,6 +10,7 @@ import (
 	"os/signal"
 	"sort"
 	"strings"
+	"syscall"
 	"time"
 
 	"visionagent/internal/agent"
@@ -22,8 +23,13 @@ import (
 	"visionagent/internal/reason"
 )
 
+// version is the build version, injected at link time via
+// -ldflags "-X main.version=...". Defaults to "dev" for plain `go build`.
+var version = "dev"
+
 func main() {
 	var (
+		showVersion   = flag.Bool("version", false, "print version and exit")
 		live          = flag.Bool("live", false, "enable REAL actions (default: dry-run only)")
 		iters         = flag.Int("iters", 0, "max iterations (0 = run forever)")
 		transport     = flag.String("transport", "http", "perception transport: http | grpc | native")
@@ -65,6 +71,11 @@ func main() {
 		telemetryOut  = flag.String("telemetry-out", "", "on shutdown, write the final telemetry snapshot to this file (.csv or .json; empty = off)")
 	)
 	flag.Parse()
+
+	if *showVersion {
+		fmt.Println(version)
+		return
+	}
 
 	log := slog.New(slog.NewTextHandler(os.Stdout, nil))
 
@@ -244,7 +255,7 @@ func main() {
 		}
 	}
 
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
 	// Watchdog supervisor: keep the loop alive in non-terminating mode,
