@@ -18,7 +18,6 @@ import (
 	"visionagent/internal/embed"
 	"visionagent/internal/executor"
 	"visionagent/internal/memory"
-	"visionagent/internal/ocr"
 	"visionagent/internal/perception"
 	"visionagent/internal/reason"
 )
@@ -115,24 +114,21 @@ func main() {
 		base = perception.NewHTTPPerceiver(*perceptionURL)
 		log.Info("perception transport: http", "url", *perceptionURL)
 	case "native":
-		eng, err := ocr.NewEngine(*detModel, *recModel, *recKeys, *ortDLL, *ep, *epDevice)
+		// The native ONNX OCR transport requires a CGO build (onnxruntime_go +
+		// the onnxruntime shared library and model assets). It is compiled in
+		// only for CGO builds; release binaries (CGO disabled) return an error
+		// here and should use -transport http with the perception sidecar.
+		np, err := newNativePerceiver(log, nativeConfig{
+			detModel: *detModel, recModel: *recModel, recKeys: *recKeys,
+			ortDLL: *ortDLL, ep: *ep, epDevice: *epDevice,
+			recognize: *nativeRec, watch: *watchModels, profile: *profile,
+			collect: *collect, collectDir: *collectDir, collectThresh: *collectThresh,
+		})
 		if err != nil {
-			log.Error("native ocr engine init failed", "err", err)
+			log.Error("native ocr init failed", "err", err)
 			os.Exit(1)
 		}
-		log.Info("native ocr engine ready", "ep", *ep, "device", *epDevice, "dll", *ortDLL)
-		opts := ocr.NativeOptions{Recognize: *nativeRec, Watch: *watchModels, Profile: *profile, Log: log}
-		if *collect {
-			col, err := ocr.NewCollector(*collectDir, *collectThresh)
-			if err != nil {
-				log.Error("flywheel collector init failed", "err", err)
-				os.Exit(1)
-			}
-			opts.Collect = col
-			log.Info("flywheel collection enabled", "dir", *collectDir, "thresh", *collectThresh)
-		}
-		base = ocr.NewNativePerceiver(eng, opts)
-		log.Info("perception transport: native (onnxruntime)", "recognize", *nativeRec, "watch", *watchModels)
+		base = np
 	default:
 		log.Error("unknown -transport (want http|grpc|native)", "value", *transport)
 		os.Exit(1)

@@ -1,0 +1,65 @@
+name: Release
+
+# Triggered when a version tag (e.g. v0.1.0) is pushed. Builds the agent for
+# each target platform and publishes the archives to a GitHub Release.
+#
+# Release binaries are built with CGO_ENABLED=0: they are fully static and have
+# no platform C toolchain or shared-library dependencies. The native ONNX OCR
+# transport requires CGO plus the onnxruntime shared library and model assets,
+# so it is intentionally excluded from the release binaries. These builds use
+# the HTTP perception sidecar for OCR instead (see docker-compose.yml / README).
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - goos: linux
+            goarch: amd64
+          - goos: windows
+            goarch: amd64
+          - goos: darwin
+            goarch: amd64
+          - goos: darwin
+            goarch: arm64
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.25.x'
+      - name: Build
+        env:
+          CGO_ENABLED: 0
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+        run: |
+          tag="${GITHUB_REF_NAME}"
+          bin="agent"
+          if [ "${{ matrix.goos }}" = "windows" ]; then
+            bin="agent.exe"
+          fi
+          go build -ldflags "-X main.version=${tag}" -o "${bin}" ./cmd/agent
+      - name: Archive
+        run: |
+          tag="${GITHUB_REF_NAME}"
+          name="vision-agent_${tag}_${{ matrix.goos }}_${{ matrix.goarch }}"
+          if [ "${{ matrix.goos }}" = "windows" ]; then
+            zip "${name}.zip" agent.exe
+            echo "ASSET=${name}.zip" >> "$GITHUB_ENV"
+          else
+            tar -czf "${name}.tar.gz" agent
+            echo "ASSET=${name}.tar.gz" >> "$GITHUB_ENV"
+          fi
+      - name: Upload to release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ env.ASSET }}
