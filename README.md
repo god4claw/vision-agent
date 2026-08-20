@@ -1,5 +1,7 @@
 # vision-agent (MVP / early beta)
 
+*Читать на [русском](README.ru.md).*
+
 Autonomous vision agent — MVP / early beta. The Stage 2–4 features (gRPC
 transport, native ONNX OCR, the data flywheel, and LLM reasoning/planning) are
 already implemented; see the sections below. Closes the loop:
